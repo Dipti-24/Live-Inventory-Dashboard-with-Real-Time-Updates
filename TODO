@@ -1,0 +1,91 @@
+Of course! That's an excellent question. Now that you have the foundation (the database and the real-time display), you can think about the features and functions your application needs.
+
+Based on your single-table system, here is a comprehensive breakdown of the essential operations you can build, categorized by their purpose. I'll include the business logic and the kind of API endpoint you would create for each.
+
+---
+
+### Category 1: Core Operations (The Essentials)
+
+These are the fundamental actions for getting data in and out of your system.
+
+#### 1. Record a Purchase (Stock In)
+* **What it is:** Adding new inventory that you've bought from a supplier.
+* **What you need:** `Product Name`, `Quantity Purchased`, `Cost Per Unit` (what you paid).
+* **Database Action:** An `INSERT` statement creating a new row with `TransactionType = 'Purchase'`.
+* **API Endpoint:** `POST /transactions/purchase`
+
+#### 2. Record a Sale (Stock Out)
+* **What it is:** Recording a sale of a product to a customer.
+* **What you need:** `Product Name`, `Quantity Sold`, `Price Per Unit` (what the customer paid).
+    * **Crucial Logic:** To calculate profit, your application must also include the `Cost Per Unit`. You'll likely need to fetch the latest purchase cost for that product from your database before creating the sale record.
+* **Database Action:** An `INSERT` statement creating a new row with `TransactionType = 'Sale'`.
+* **API Endpoint:** `POST /transactions/sale`
+
+#### 3. View Transaction History
+* **What it is:** A chronological log of all purchases and sales, just like a bank statement. This is what your live table currently displays.
+* **What you need:** Optionally, date ranges to filter the history.
+* **Database Action:** A `SELECT` query, usually ordered by date descending.
+* **API Endpoint:** `GET /transactions`
+
+---
+
+### Category 2: Reporting & Analytics (Getting Insights)
+
+These operations don't add new data; they analyze the existing data to give you valuable business insights.
+
+#### 4. Calculate Current Stock Level
+* **What it is:** Answering the most important inventory question: "How much of Product X do I have left?"
+* **What you need:** The `Product Name`.
+* **Database Action:** A query that calculates `(SUM of quantity for 'Purchase' transactions) - (SUM of quantity for 'Sale' transactions)` for a specific product.
+* **API Endpoints:**
+    * `GET /inventory/stock/{product_name}` (for one product)
+    * `GET /inventory/stock` (for all products, using a `GROUP BY`)
+
+#### 5. Analyze Profitability
+* **What it is:** Answering the key financial questions: "Am I making money?" and "Where is the money coming from?"
+* **What you need:** A date range or a specific product name.
+* **Database Action:** A `SUM` on the `total_profit_loss` column, often with `WHERE` clauses for dates or `GROUP BY` for products.
+* **API Endpoints:**
+    * `GET /reports/profit/by-product`
+    * `GET /reports/profit?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD`
+
+#### 6. Identify Best-Selling Products
+* **What it is:** Finding out which products are your top performers.
+* **What you need:** A date range. You can define "best-selling" in two ways:
+    * **By Quantity Sold:** Ranks products by the total number of units sold.
+    * **By Profit Generated:** Ranks products by the total profit they have generated.
+* **Database Action:** A `SELECT` query on 'Sale' transactions with `GROUP BY product_name` and `ORDER BY SUM(quantity)` or `SUM(total_profit_loss)`.
+* **API Endpoint:** `GET /reports/performance/best-sellers`
+
+#### 7. Generate a Low Stock Alert
+* **What it is:** Proactively finding which products you need to reorder.
+* **What you need:** A stock threshold (e.g., "show me all products with less than 10 units").
+* **Database Action:** This is more of an application-level feature. The logic would be:
+    1.  Calculate the current stock for every product.
+    2.  Return a list of products where the stock is below the given threshold.
+* **API Endpoint:** `GET /inventory/alerts/low-stock?threshold=10`
+
+---
+
+### Category 3: Data Management & Maintenance
+
+These are the "housekeeping" operations for correcting errors or handling exceptions.
+
+#### 8. Update a Transaction
+* **What it is:** Correcting a mistake in a previously entered transaction (e.g., wrong quantity or price).
+* **What you need:** The `Transaction ID` and the new, corrected values.
+* **Database Action:** An `UPDATE` statement on a specific row.
+* **API Endpoint:** `PUT /transactions/{transaction_id}` or `PATCH /transactions/{transaction_id}`
+
+#### 9. Record an Inventory Adjustment (Write-off)
+* **What it is:** Accounting for lost, stolen, or damaged stock that wasn't sold. This is a critical operation many simple systems miss.
+* **How to handle it:** You can record it as a **Sale** with a `Unit Price` of `$0`. This correctly removes the item from your stock count and records the cost as a loss in your profit calculation. You might consider adding a `notes` column to the table to explain the adjustment.
+* **API Endpoint:** You can reuse `POST /transactions/sale`, sending `$0` as the price.
+
+#### 10. Delete a Transaction
+* **What it is:** Completely removing a transaction record. **This should be used with extreme caution**, as it permanently alters your history and can make accounting difficult.
+* **What you need:** The `Transaction ID`.
+* **Database Action:** A `DELETE` statement.
+* **API Endpoint:** `DELETE /transactions/{transaction_id}`
+
+Even with a single table, you can build a surprisingly powerful and complete inventory management system by implementing these operations as API endpoints.

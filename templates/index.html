@@ -1,0 +1,559 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Live Inventory Dashboard — Modern</title>
+  <style>
+    /* ---------- Theme & Reset ---------- */
+    :root{
+      --bg:#0f1724;              /* deep slate */
+      --panel:#0b1220;            /* darker panel */
+      --muted:#94a3b8;            /* muted text */
+      --accent:#7c5cff;           /* primary gradient */
+      --accent-2:#00c2ff;         /* secondary gradient */
+      --card:#0f1728AA;           /* translucent card */
+      --glass: rgba(255,255,255,0.03);
+      --success:#22c55e;
+      --danger:#ff6b6b;
+      --radius:14px;
+      --shadow: 0 6px 30px rgba(2,6,23,0.6);
+      --glass-border: rgba(255,255,255,0.04);
+      --text-main: #e6eef6;
+      --text-header: #cfe6ff;
+      --body-bg-end: #071021;
+      font-synthesis: none;
+    }
+
+    html.light-mode {
+      --bg: #f8fafc;
+      --panel: #ffffff;
+      --muted: #64748b;
+      --glass: rgba(0,0,0,0.03);
+      --success:#16a34a;
+      --danger:#dc2626;
+      --shadow: 0 6px 30px rgba(100,116,139,0.12);
+      --glass-border: rgba(0,0,0,0.08);
+      --text-main: #1e293b;
+      --text-header: #334155;
+      --body-bg-end: #e2e8f0;
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg),var(--body-bg-end));color:var(--text-main);font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;}
+    a{color:inherit}
+
+    /* smooth theme transitions */
+    body, .panel, .chat-floating, .icon-btn, .chat-input, .bot, .minibar, .open-btn {
+      transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    * { transition: background 0.3s ease, color 0.3s ease; }
+
+
+    /* ---------- App Layout ---------- */
+    .app{
+      height:100vh;
+      display:grid;
+      grid-template-columns: 1fr 5px minmax(400px, 1fr);
+      gap:0;
+      padding:28px;
+      align-items:stretch;
+    }
+
+    #resize-handle {
+        cursor: col-resize;
+        width: 5px;
+        margin: 0 11px;
+        border-radius: 5px;
+        background-color: var(--glass-border);
+        transition: background-color 0.2s ease;
+    }
+    #resize-handle:hover {
+        background-color: var(--accent);
+    }
+    
+    .right-panel {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        min-width: 400px;
+    }
+
+
+    /* ---------- Main Panel (Table) ---------- */
+    .panel{
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      background-color: var(--panel);
+      border-radius:var(--radius);
+      padding:22px;
+      box-shadow:var(--shadow);
+      border:1px solid var(--glass-border);
+      overflow:hidden;
+      min-width: 500px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+    html.light-mode .panel {
+      background: var(--panel);
+    }
+
+    .panel-header{
+      display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;
+    }
+    .panel-header-controls {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .title{
+      display:flex;gap:14px;align-items:center
+    }
+    .logo{
+      width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;box-shadow:0 6px 18px rgba(124,92,255,0.18);
+    }
+    h1{font-size:18px;margin:0}
+    .muted{color:var(--muted);font-size:13px}
+
+    .status-pill{padding:8px 12px;border-radius:999px;font-weight:600;font-size:13px;background:linear-gradient(90deg, rgba(34,197,94,0.12), rgba(34,197,94,0.04));color:var(--success);border:1px solid rgba(34,197,94,0.08)}
+    .status-pill.disconnected{background:linear-gradient(90deg, rgba(255,107,107,0.06), rgba(255,107,107,0.02));color:var(--danger);border:1px solid rgba(255,107,107,0.06)}
+
+    .table-wrap{overflow:auto;border-radius:12px;padding:8px;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));border:1px solid rgba(255,255,255,0.02); flex: 1;}
+    html.light-mode .table-wrap {
+      background: var(--glass);
+      border-color: var(--glass-border);
+    }
+
+    table{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
+    thead th{position:sticky;top:0;background:linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));backdrop-filter: blur(6px);padding:12px 14px;text-align:left;color:var(--text-header);font-weight:600;font-size:13px}
+    html.light-mode thead th { background: rgba(248, 250, 252, 0.8); }
+    tbody td{padding:12px 14px;border-top:1px dashed rgba(255,255,255,0.02);color: var(--text-main)}
+    html.light-mode tbody td { border-top-color: var(--glass-border); }
+    tbody tr:hover td{background:linear-gradient(90deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));}
+    html.light-mode tbody tr:hover td { background: var(--glass); }
+
+    .tag{display:inline-block;padding:6px 10px;border-radius:999px;font-weight:700;font-size:12px}
+    .type-in{background:linear-gradient(90deg, rgba(124,92,255,0.12), rgba(124,92,255,0.03));color:var(--accent)}
+    .type-out{background:linear-gradient(90deg, rgba(0,194,255,0.10), rgba(0,194,255,0.02));color:var(--accent-2)}
+    .profit{color:var(--success);font-weight:700}
+    .loss{color:var(--danger);font-weight:700}
+
+    /* ---------- Chatbot (now in-layout) ---------- */
+    .chat-floating{
+      position: relative;
+      width:100%;
+      height:100%;
+      border-radius:16px;
+      background:linear-gradient(180deg, rgba(15,23,36,0.9), rgba(8,14,24,0.88));
+      box-shadow:var(--shadow);
+      border:1px solid rgba(255,255,255,0.03);
+      display:flex;
+      flex-direction:column;
+      overflow:hidden;
+      min-width: 280px; 
+      min-height: 250px;
+    }
+    html.light-mode .chat-floating {
+      background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(248, 250, 252, 0.88));
+      border-color: var(--glass-border);
+    }
+
+    .chat-header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,0.02);background:linear-gradient(180deg, rgba(255,255,255,0.015), rgba(255,255,255,0.01));}
+    html.light-mode .chat-header { border-bottom-color: var(--glass-border); background: var(--glass); }
+
+    .chat-title{display:flex;gap:10px;align-items:center}
+    .avatar{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff}
+    .controls{display:flex;gap:8px;align-items:center}
+    .icon-btn{width:36px;height:36px;border-radius:9px;background:transparent;border:1px solid rgba(255,255,255,0.03);display:flex;align-items:center;justify-content:center;cursor:pointer; color: var(--muted)}
+    html.light-mode .icon-btn { border-color: var(--glass-border); }
+    .icon-btn svg { width: 20px; height: 20px; }
+    .icon-btn:hover{background:rgba(255,255,255,0.02)}
+    html.light-mode .icon-btn:hover { background: var(--glass); }
+
+    .chat-body{flex:1;padding:14px;display:flex;flex-direction:column;gap:8px;overflow:auto}
+
+    .bubble{max-width:78%;padding:10px 12px;border-radius:12px;line-height:1.3;font-size:14px}
+    .user{align-self:flex-end;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#fff;border-bottom-right-radius:4px}
+    .bot{align-self:flex-start;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));color:var(--muted);border-bottom-left-radius:4px}
+    html.light-mode .bot { background: #eef2f7; color: var(--text-main); }
+
+    .chat-input-wrap{padding:10px;border-top:1px solid rgba(255,255,255,0.02);display:flex;gap:10px;align-items:center}
+    html.light-mode .chat-input-wrap { border-top-color: var(--glass-border); }
+    .chat-input{flex:1;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:var(--text-main);outline:none;font-size:14px}
+    html.light-mode .chat-input { border-color: var(--glass-border); }
+    .send-btn{padding:10px 14px;border-radius:10px;border:none;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#fff;font-weight:700;cursor:pointer}
+    .send-btn:active{transform:translateY(1px)}
+
+    .minibar, .open-btn {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        left: 0;
+        margin: auto;
+    }
+
+    .minibar{
+      width: calc(100% - 16px);
+      height:60px;
+      border-radius:14px;
+      padding:8px 12px;
+      background:linear-gradient(90deg,var(--accent-2),var(--accent));
+      display:flex;align-items:center;gap:12px;
+      box-shadow:0 14px 40px rgba(2,6,23,0.5);
+      z-index:99;
+      bottom: 8px;
+    }
+    .minibar.hidden{display:none}
+    .minibar .label{font-weight:700; color: #fff;}
+
+    .open-btn{
+      width: calc(100% - 16px);
+      height: calc(100% - 16px);
+      border-radius:14px;
+      background:linear-gradient(135deg,var(--accent),var(--accent-2));
+      box-shadow:0 16px 40px rgba(124,92,255,0.2);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color:#fff;
+      font-weight:800;
+      font-size:18px;
+      border:none;
+      z-index:98;
+      top: 8px;
+      bottom: 8px;
+      left: 8px;
+      right: 8px;
+      width: auto;
+      height: auto;
+    }
+
+    .is-resizing {
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    @media (max-width:900px){
+      .app{
+          grid-template-columns:1fr;
+          gap: 22px;
+          height: auto;
+      }
+      #resize-handle { display: none; }
+      .right-panel { min-height: 500px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app">
+    <section class="panel" aria-labelledby="inventory-heading">
+      <div class="panel-header">
+        <div class="title">
+          <div class="logo">LI</div>
+          <div>
+            <h1 id="inventory-heading">Live Inventory Transactions</h1>
+            <div class="muted">Real-time feed of recent activity</div>
+          </div>
+        </div>
+        <div class="panel-header-controls">
+            <button id="theme-toggle" class="icon-btn" title="Toggle theme" aria-label="Toggle theme"></button>
+            <div id="sse-status" class="status-pill disconnected" role="status" aria-live="polite">Connecting…</div>
+        </div>
+      </div>
+      <div class="table-wrap" id="table-wrap">
+        <table id="inventory-table" aria-describedby="inventory-heading">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Date</th>
+              <th>Product Name</th>
+              <th>Type</th>
+              <th>Quantity</th>
+              <th>Unit Cost</th>
+              <th>Unit Price</th>
+              <th>Profit/Loss</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      
+      <div id="debug-container" style="margin-top: 20px;">
+        <h3 style="color: var(--text-header); margin-bottom: 8px;">Live Data from Server (Debug View)</h3>
+        <pre id="debug-output" style="background-color: #00000030; border: 1px dashed var(--accent); padding: 10px; border-radius: 8px; color: var(--muted); white-space: pre-wrap; word-wrap: break-word; min-height: 50px;">Waiting for data...</pre>
+      </div>
+
+    </section>
+
+    <div id="resize-handle"></div>
+
+    <div class="right-panel">
+      <div id="chat-floating" class="chat-floating" role="dialog" aria-label="Inventory assistant">
+        <div class="chat-header">
+          <div class="chat-title">
+            <div class="avatar">IA</div>
+            <div>
+              <div style="font-weight:800">Inventory Assistant</div>
+              <div class="muted" style="font-size:12px">Ask me about stock, profit & recent transactions</div>
+            </div>
+          </div>
+          <div class="controls">
+            <button id="minimize-btn" class="icon-btn" title="Minimize" aria-label="Minimize chat">—</button>
+            <button id="close-btn" class="icon-btn" title="Close" aria-label="Close chat">✕</button>
+          </div>
+        </div>
+        <div id="chat-body" class="chat-body" tabindex="0"></div>
+        <div class="chat-input-wrap">
+          <input id="chat-input" class="chat-input" type="text" aria-label="Chat input" placeholder="Ask a question..." />
+          <button id="send-btn" class="send-btn" aria-label="Send message">Send</button>
+        </div>
+      </div>
+
+      <div id="minibar" class="minibar hidden" role="button" aria-label="Open chat" tabindex="0">
+        <div class="avatar" style="width:44px;height:44px;border-radius:10px">IA</div>
+        <div>
+          <div class="label">Inventory Assistant</div>
+          <div class="muted" style="font-size:12px">Tap to open</div>
+        </div>
+      </div>
+
+      <button id="open-btn" class="open-btn" title="Open chat" aria-label="Open chat" style="display: none;">💬</button>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // ---------- Elements ----------
+      const sseStatusDiv = document.getElementById('sse-status');
+      const tableBody = document.querySelector('#inventory-table tbody');
+      const sseEndpoint = '/events';
+
+      // ---------- SSE with on-screen debugging ----------
+      function initializeSSE(){
+        try{
+          const es = new EventSource(sseEndpoint);
+          const debugOutput = document.getElementById('debug-output');
+
+          es.onopen = () => { 
+            sseStatusDiv.textContent = 'Connected'; 
+            sseStatusDiv.classList.remove('disconnected'); 
+          };
+          
+          es.onmessage = (evt) => { 
+            // Update the on-screen debug box with the raw data
+            debugOutput.textContent = 'Received at ' + new Date().toLocaleTimeString() + ':\n\n' + evt.data;
+            
+            console.log("Raw data received from server:", evt.data);
+
+            try {
+              const transactions = JSON.parse(evt.data || '[]'); 
+              renderTable(transactions); 
+            } catch(e) {
+              console.error("Failed to parse JSON data:", e);
+              debugOutput.textContent += "\n\nERROR: This data is not valid JSON. See console (F12) for details.";
+            }
+          };
+
+          es.onerror = (err) => { 
+            console.error('SSE Error', err); 
+            sseStatusDiv.textContent = 'Disconnected'; 
+            sseStatusDiv.classList.add('disconnected'); 
+            debugOutput.textContent = 'Error connecting to the server. Check the console (F12) for details.';
+          };
+        }catch(e){
+          console.error('SSE init failed', e); 
+          sseStatusDiv.textContent = 'SSE not supported';
+        }
+      }
+
+      // "DEFENSIVE" RENDER TABLE FUNCTION
+      function renderTable(transactions){
+        console.log("Data received by renderTable:", transactions);
+        tableBody.innerHTML = '';
+
+        if (!Array.isArray(transactions) || transactions.length === 0) {
+          console.warn("Received empty or invalid data. Displaying 'No transactions' message.");
+          const row = document.createElement('tr');
+          const cell = document.createElement('td');
+          cell.colSpan = 8;
+          cell.style.textAlign = 'center';
+          cell.className = 'muted';
+          cell.textContent = 'No transactions found or waiting for data...';
+          row.appendChild(cell);
+          tableBody.appendChild(row);
+          return;
+        }
+
+        transactions.forEach((tx, index) => {
+          console.log(`Processing item #${index}:`, tx);
+
+          const id_val = tx.transaction_id ?? 'N/A';
+          const date_val = tx.transaction_date ? new Date(tx.transaction_date).toLocaleDateString() : 'Invalid Date';
+          const name_val = tx.product_name ?? 'Unknown Product';
+          const type_val = tx.transaction_type ?? 'Unknown Type';
+          const qty_val = tx.quantity ?? 0;
+          const cost_val = formatMoney(tx.unit_cost ?? 0);
+          const price_val = formatMoney(tx.unit_price ?? 0);
+          const pl_val = formatMoney(tx.total_profit_loss ?? 0);
+
+          const tr = document.createElement('tr');
+          const [id, date, name, type, qty, cost, price, pl] = [td(id_val), td(date_val), td(name_val), td(null), td(qty_val), td(cost_val), td(price_val), td(pl_val)];
+
+          const typeTag = document.createElement('span');
+          typeTag.className = 'tag ' + (type_val.toLowerCase().includes('in') ? 'type-in' : 'type-out');
+          typeTag.textContent = type_val;
+          type.appendChild(typeTag);
+
+          const profitVal = parseFloat(tx.total_profit_loss || 0);
+          if(profitVal > 0) pl.className = 'profit';
+          else if(profitVal < 0) pl.className = 'loss';
+
+          [id,date,name,type,qty,cost,price,pl].forEach(c => tr.appendChild(c));
+          tableBody.appendChild(tr);
+        });
+      }
+
+      function td(content){ const c = document.createElement('td'); c.textContent = content==null? '': content; return c }
+      function formatMoney(v){ const n = Number(v||0); return '$' + n.toFixed(2) }
+
+      // ---------- Chatbot Elements ----------
+      const chatFloating = document.getElementById('chat-floating');
+      const chatBody = document.getElementById('chat-body');
+      const chatInput = document.getElementById('chat-input');
+      const sendBtn = document.getElementById('send-btn');
+      const minimizeBtn = document.getElementById('minimize-btn');
+      const closeBtn = document.getElementById('close-btn');
+      const minibar = document.getElementById('minibar');
+      const openBtn = document.getElementById('open-btn');
+
+      // ---------- Chatbot logic with /chat endpoint ----------
+      const chatEndpoint = '/chat';
+
+      function addMessage(sender, text){
+        const el = document.createElement('div');
+        el.className = 'bubble ' + (sender === 'user' ? 'user' : 'bot');
+        el.textContent = text;
+        chatBody.appendChild(el);
+        chatBody.scrollTop = chatBody.scrollHeight;
+        return el;
+      }
+      
+      const sessionId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      async function handleSendMessage(){
+        const msg = chatInput.value.trim();
+        if(!msg) return;
+
+        addMessage('user', msg);
+        chatInput.value = '';
+        chatInput.disabled = true;
+        sendBtn.disabled = true;
+
+        const thinkingBubble = addMessage('bot', '...');
+
+        try {
+            const response = await fetch(chatEndpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_input: msg, session_id: sessionId }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => null);
+                const detail = errorData?.detail || `HTTP error! status: ${response.status}`;
+                throw new Error(detail);
+            }
+
+            const data = await response.json();
+            const botMsg = data.response || "Sorry, I couldn't get a proper response.";
+            thinkingBubble.textContent = botMsg;
+
+        } catch (error) {
+            console.error('Chat API Error:', error);
+            thinkingBubble.textContent = `Sorry, an error occurred: ${error.message}`;
+        } finally {
+            chatInput.disabled = false;
+            sendBtn.disabled = false;
+            chatInput.focus();
+            chatBody.scrollTop = chatBody.scrollHeight;
+        }
+      }
+
+      sendBtn.addEventListener('click', handleSendMessage);
+      chatInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); handleSendMessage() } });
+      setTimeout(()=> addMessage('bot', "Welcome! I am your inventory assistant. Ask me anything about the data."), 450);
+
+      // ---------- Open / Minimize / Close behaviour ----------
+      function minimize(){ chatFloating.style.display = 'none'; minibar.classList.remove('hidden'); openBtn.style.display = 'none' }
+      function openFromMinibar(){ chatFloating.style.display = 'flex'; minibar.classList.add('hidden'); openBtn.style.display = 'none' }
+      function closeChat(){ chatFloating.style.display = 'none'; minibar.classList.add('hidden'); openBtn.style.display = 'flex' }
+
+      minimizeBtn.addEventListener('click', minimize);
+      minibar.addEventListener('click', openFromMinibar);
+      minibar.addEventListener('keydown', (e)=>{ if(e.key==='Enter') openFromMinibar() });
+      closeBtn.addEventListener('click', closeChat);
+      openBtn.addEventListener('click', ()=>{ chatFloating.style.display = 'flex'; minibar.classList.add('hidden'); openBtn.style.display = 'none'; chatInput.focus(); });
+
+      // ---------- Theme Toggle ----------
+      const themeToggleBtn = document.getElementById('theme-toggle');
+      const htmlEl = document.documentElement;
+      const sunIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.25a.75.75 0 0 1 .75.75v2.25a.75.75 0 0 1-1.5 0V3a.75.75 0 0 1 .75-.75ZM7.5 12a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0ZM18.894 6.106a.75.75 0 0 1 0 1.06l-1.591 1.59a.75.75 0 1 1-1.06-1.06l1.59-1.59a.75.75 0 0 1 1.06 0ZM21.75 12a.75.75 0 0 1-.75.75h-2.25a.75.75 0 0 1 0-1.5H21a.75.75 0 0 1 .75.75ZM17.803 17.803a.75.75 0 0 1-1.06 0l-1.59-1.591a.75.75 0 1 1 1.06-1.06l1.59 1.59a.75.75 0 0 1 0 1.06ZM12 21a.75.75 0 0 1-.75-.75v-2.25a.75.75 0 0 1 1.5 0v2.25A.75.75 0 0 1 12 21ZM5.106 18.894a.75.75 0 0 1 0-1.06l1.59-1.59a.75.75 0 0 1 1.06 1.06l-1.59 1.59a.75.75 0 0 1-1.06 0ZM3 12a.75.75 0 0 1 .75-.75h2.25a.75.75 0 0 1 0 1.5H3.75A.75.75 0 0 1 3 12ZM6.106 5.106a.75.75 0 0 1 1.06 0l1.591 1.59a.75.75 0 0 1-1.06 1.06l-1.59-1.59a.75.75 0 0 1 0-1.06Z" /></svg>`;
+      const moonIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M9.528 1.718a.75.75 0 0 1 .162.819A8.97 8.97 0 0 0 9 6a9 9 0 0 0 9 9 8.97 8.97 0 0 0 3.463-.69.75.75 0 0 1 .981.981A10.503 10.503 0 0 1 12 22.5a10.5 10.5 0 0 1-10.5-10.5c0-4.306 2.72-7.962 6.528-9.782Z" clip-rule="evenodd" /></svg>`;
+      function setTheme(theme) {
+        if (theme === 'light') { htmlEl.classList.add('light-mode'); themeToggleBtn.innerHTML = moonIcon; }
+        else { htmlEl.classList.remove('light-mode'); themeToggleBtn.innerHTML = sunIcon; }
+        localStorage.setItem('theme', theme);
+      }
+      themeToggleBtn.addEventListener('click', () => {
+        const currentTheme = htmlEl.classList.contains('light-mode') ? 'light' : 'dark';
+        setTheme(currentTheme === 'light' ? 'dark' : 'light');
+      });
+      setTheme(localStorage.getItem('theme') || 'dark');
+
+      // ---------- Adjustable Layout Functionality ----------
+      function makeLayoutAdjustable() {
+          const app = document.querySelector('.app');
+          const handle = document.getElementById('resize-handle');
+          
+          let isResizing = false;
+
+          handle.addEventListener('mousedown', (e) => {
+              isResizing = true;
+              document.body.classList.add('is-resizing');
+              document.addEventListener('mousemove', onMouseMove);
+              document.addEventListener('mouseup', onMouseUp, { once: true });
+          });
+
+          function onMouseMove(e) {
+              if (!isResizing) return;
+              e.preventDefault();
+
+              const appRect = app.getBoundingClientRect();
+              let newLeftWidth = e.clientX - appRect.left;
+
+              const minLeftWidth = 500;
+              if (newLeftWidth < minLeftWidth) newLeftWidth = minLeftWidth;
+
+              const minRightWidth = 400; 
+              if (appRect.width - newLeftWidth < minRightWidth) {
+                  newLeftWidth = appRect.width - minRightWidth;
+              }
+
+              app.style.gridTemplateColumns = `${newLeftWidth}px 5px 1fr`;
+          }
+
+          function onMouseUp() {
+              isResizing = false;
+              document.body.classList.remove('is-resizing');
+              document.removeEventListener('mousemove', onMouseMove);
+          }
+      }
+
+      // ----- Initialize all UI enhancements -----
+      makeLayoutAdjustable();
+      initializeSSE();
+    });
+  </script>
+
+</body>
+</html>
